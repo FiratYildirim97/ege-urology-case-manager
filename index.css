@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root { color-scheme: light; }
+body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+/* Force light mode inputs */
+input, select, textarea { color-scheme: light; }
+
+/* Hide scrollbar */
+::-webkit-scrollbar { width: 0px; background: transparent; }

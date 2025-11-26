@@ -90,82 +90,95 @@ const SurgeryList: React.FC<SurgeryListProps> = ({ surgeries, onEdit, onDelete }
         document.body.removeChild(link);
     };
 
+    const loadXLSXLibrary = async () => {
+        if ((window as any).XLSX) return (window as any).XLSX;
+        
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = "https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js";
+            script.onload = () => resolve((window as any).XLSX);
+            script.onerror = () => reject(new Error("Excel kütüphanesi yüklenemedi."));
+            document.head.appendChild(script);
+        });
+    };
+
     const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length || !excelDate) return;
         const file = e.target.files[0];
         setUploading(true);
 
-        const XLSX = (window as any).XLSX;
-        if (!XLSX) {
-            alert("Excel kütüphanesi yüklenemedi.");
-            setUploading(false);
-            return;
-        }
+        try {
+            const XLSX = await loadXLSXLibrary();
+            
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    let totalAdded = 0;
+                    const dayMap: {[key:string]: number} = { "pazartesi": 0, "salı": 1, "çarşamba": 2, "perşembe": 3, "cuma": 4, "cumartesi": 5, "pazar": 6 };
+                    const startDate = new Date(excelDate);
 
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
-                let totalAdded = 0;
-                const dayMap: {[key:string]: number} = { "pazartesi": 0, "salı": 1, "çarşamba": 2, "perşembe": 3, "cuma": 4, "cumartesi": 5, "pazar": 6 };
-                const startDate = new Date(excelDate);
+                    for (const sheetName of workbook.SheetNames) {
+                        const sheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(sheet);
+                        const normalizedName = sheetName.toLowerCase().trim();
+                        let dayOffset = 0;
+                        let foundDay = false;
+                        
+                        for (const [dayName, offset] of Object.entries(dayMap)) {
+                            if (normalizedName.includes(dayName)) {
+                                dayOffset = offset;
+                                foundDay = true;
+                                break;
+                            }
+                        }
+                        if (!foundDay && workbook.SheetNames.indexOf(sheetName) > 0) {
+                            dayOffset = workbook.SheetNames.indexOf(sheetName);
+                        }
 
-                for (const sheetName of workbook.SheetNames) {
-                    const sheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(sheet);
-                    const normalizedName = sheetName.toLowerCase().trim();
-                    let dayOffset = 0;
-                    let foundDay = false;
-                    
-                    for (const [dayName, offset] of Object.entries(dayMap)) {
-                        if (normalizedName.includes(dayName)) {
-                            dayOffset = offset;
-                            foundDay = true;
-                            break;
+                        const targetDate = new Date(startDate);
+                        targetDate.setDate(startDate.getDate() + dayOffset);
+                        const targetDateStr = targetDate.toISOString().split('T')[0];
+
+                        for (const row of (jsonData as any[])) {
+                             const keys = Object.keys(row);
+                             const getVal = (k: string) => { const key = keys.find(key => key.trim().toUpperCase() === k); return key ? row[key] : ""; };
+                             const patientName = getVal("HASTA ADI");
+                             if (!patientName) continue;
+
+                             const newDoc: Surgery = {
+                                date: targetDateStr, 
+                                patientName: patientName, 
+                                protocol: String(getVal("PROTOKOL") || ""), 
+                                phone: String(getVal("TELEFON") || ""), 
+                                operation: String(getVal("OPERASYON") || ""), 
+                                professor: String(getVal("HOCA") || ""), 
+                                resident: String(getVal("VEREN DR") || ""), 
+                                urine: String(getVal("İDRAR KÜLTÜRÜ") || ""), 
+                                anesthesia: String(getVal("ANESTEZİ") || ""), 
+                                age: String(getVal("YAŞ") || ""),
+                                note: (getVal("NOTLAR") || "") + (getVal("YAŞ") ? ` (Yaş: ${getVal("YAŞ")})` : ""), 
+                                isSecondRoom: false, isRemaining: false, isMDP: false, isKG: false,
+                            };
+                            await addSurgery(newDoc);
+                            totalAdded++;
                         }
                     }
-                    if (!foundDay && workbook.SheetNames.indexOf(sheetName) > 0) {
-                        dayOffset = workbook.SheetNames.indexOf(sheetName);
-                    }
-
-                    const targetDate = new Date(startDate);
-                    targetDate.setDate(startDate.getDate() + dayOffset);
-                    const targetDateStr = targetDate.toISOString().split('T')[0];
-
-                    for (const row of (jsonData as any[])) {
-                         const keys = Object.keys(row);
-                         const getVal = (k: string) => { const key = keys.find(key => key.trim().toUpperCase() === k); return key ? row[key] : ""; };
-                         const patientName = getVal("HASTA ADI");
-                         if (!patientName) continue;
-
-                         const newDoc: Surgery = {
-                            date: targetDateStr, 
-                            patientName: patientName, 
-                            protocol: String(getVal("PROTOKOL") || ""), 
-                            phone: String(getVal("TELEFON") || ""), 
-                            operation: String(getVal("OPERASYON") || ""), 
-                            professor: String(getVal("HOCA") || ""), 
-                            resident: String(getVal("VEREN DR") || ""), 
-                            urine: String(getVal("İDRAR KÜLTÜRÜ") || ""), 
-                            anesthesia: String(getVal("ANESTEZİ") || ""), 
-                            age: String(getVal("YAŞ") || ""),
-                            note: (getVal("NOTLAR") || "") + (getVal("YAŞ") ? ` (Yaş: ${getVal("YAŞ")})` : ""), 
-                            isSecondRoom: false, isRemaining: false, isMDP: false, isKG: false,
-                        };
-                        await addSurgery(newDoc);
-                        totalAdded++;
-                    }
+                    alert(`${totalAdded} hasta eklendi!`);
+                    setShowExcelModal(false);
+                } catch (err: any) {
+                    alert("Excel işlenirken hata: " + err.message);
+                } finally {
+                    setUploading(false);
                 }
-                alert(`${totalAdded} hasta eklendi!`);
-                setShowExcelModal(false);
-            } catch (err: any) {
-                alert("Hata: " + err.message);
-            } finally {
-                setUploading(false);
-            }
-        };
-        reader.readAsArrayBuffer(file);
+            };
+            reader.readAsArrayBuffer(file);
+
+        } catch (err: any) {
+             alert(err.message);
+             setUploading(false);
+        }
     };
 
     const stats = {
@@ -256,7 +269,7 @@ const SurgeryList: React.FC<SurgeryListProps> = ({ surgeries, onEdit, onDelete }
                             <div><label className="block text-xs font-bold text-slate-700 mb-1">1. Başlangıç Tarihi (Pazartesi)</label><input type="date" value={excelDate} onChange={e => setExcelDate(e.target.value)} className="w-full border rounded-lg p-2 text-sm" /></div>
                             <div><label className="block text-xs font-bold text-slate-700 mb-1">2. Excel Dosyası</label><input type="file" accept=".xlsx, .xls" onChange={handleExcelUpload} className="w-full text-xs border rounded-lg p-2" disabled={!excelDate || uploading} /></div>
                         </div>
-                        {uploading && <div className="mt-2 text-[10px] text-center text-slate-400">İşleniyor...</div>}
+                        {uploading && <div className="mt-2 text-[10px] text-center text-slate-400">Yükleniyor...</div>}
                         <div className="mt-6 flex gap-2">
                             <button onClick={() => setShowExcelModal(false)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold">İptal</button>
                         </div>

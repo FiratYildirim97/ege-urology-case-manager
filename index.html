@@ -9,27 +9,19 @@
     <link rel="icon" type="image/png" href="/icon.png">
     <link rel="apple-touch-icon" href="/icon.png">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome (İkonlar için hala gerekli, build içine almak daha karmaşık olduğu için CDN kalabilir ama Tailwind kaldırıldı) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS for Excel operations -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        :root { color-scheme: light; }
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        /* Force light mode inputs to avoid dark backgrounds on checkboxes */
-        input, select, textarea { color-scheme: light; }
-        /* Hide scrollbar for cleaner mobile look */
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
-    </style>
+    
+    <!-- SheetJS CDN kaldırıldı (dinamik yüklenecek) -->
+    <!-- Tailwind Script CDN kaldırıldı (build sistemine alındı) -->
 <script type="importmap">
 {
   "imports": {
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
     "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
   }
 }

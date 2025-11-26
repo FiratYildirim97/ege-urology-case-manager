@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, Timestamp, enableIndexedDbPersistence } from "firebase/firestore";
 import { Surgery } from "../types";
 
 const firebaseConfig = {
@@ -13,10 +13,29 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// Enable Offline Persistence to save data usage
+// This allows the app to load from local cache first, reducing Firestore reads significantly.
+try {
+    enableIndexedDbPersistence(db).catch((err) => {
+        if (err.code == 'failed-precondition') {
+            // Multiple tabs open, persistence can only be enabled in one tab at a a time.
+            console.log('Persistence failed: Multiple tabs open');
+        } else if (err.code == 'unimplemented') {
+            // The current browser does not support all of the features required to enable persistence
+            console.log('Persistence failed: Browser not supported');
+        }
+    });
+} catch (e) {
+    console.log("Persistence initialization error:", e);
+}
+
 const surgeryCollection = collection(db, "surgeries");
 
 export const subscribeToSurgeries = (callback: (surgeries: Surgery[]) => void) => {
-    // Basic query, client side filtering is extensive in this app so we fetch all
+    // Basic query
+    // Thanks to persistence, this won't re-download everything on every reload, 
+    // only the changes (deltas) will be downloaded.
     const q = query(surgeryCollection);
     return onSnapshot(q, (snapshot) => {
         const data: Surgery[] = [];
