@@ -19,15 +19,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
     
     // Salon Planlama State'leri
     const [isPlanning, setIsPlanning] = useState(false);
+    
     // ID -> Salon Numarası (1, 2, 3) eşleşmesi
-    const [placements, setPlacements] = useState<Record<string, number>>({});
+    // BAŞLANGIÇTA LOCALSTORAGE'DAN OKU
+    const [placements, setPlacements] = useState<Record<string, number>>(() => {
+        try {
+            const saved = localStorage.getItem('surgery_placements');
+            return saved ? JSON.parse(saved) : {};
+        } catch (e) {
+            return {};
+        }
+    });
 
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // Tarih değiştiğinde planlamayı sıfırla (veya isterseniz localstorage'da tutulabilir ama şimdilik sıfırlıyoruz)
-    useEffect(() => {
-        setPlacements({});
-    }, [selectedDate]);
+    // VERİ DEĞİŞTİĞİNDE LOCALSTORAGE'A KAYDET
+    // Not: useEffect ile tarih değişince sıfırlama işlemini kaldırdık.
+    const saveToStorage = (data: Record<string, number>) => {
+        localStorage.setItem('surgery_placements', JSON.stringify(data));
+    };
 
     const getDaysInMonth = (year: number, month: number) => {
         return new Date(year, month + 1, 0).getDate();
@@ -101,6 +111,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
             } else {
                 newState[id] = room;
             }
+            saveToStorage(newState);
             return newState;
         });
     };
@@ -109,6 +120,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
         setPlacements(prev => {
             const newState = { ...prev };
             delete newState[id];
+            saveToStorage(newState);
             return newState;
         });
     };
