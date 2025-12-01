@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Surgery } from '../types';
 import { formatDateDisplay } from '../services/utils';
 import SurgeryCard from './SurgeryCard';
@@ -16,9 +16,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
     // Actually, usually users want to navigate months independently of selection, but syncing them is simpler.
     // Let's keep a local state for the displayed month.
     const [displayDate, setDisplayDate] = useState(new Date(selectedDate));
+    
+    // Salon Planlama State'leri
+    const [isPlanning, setIsPlanning] = useState(false);
+    // ID -> Salon Numarası (1, 2, 3) eşleşmesi
+    const [placements, setPlacements] = useState<Record<string, number>>({});
 
     const todayStr = new Date().toISOString().split('T')[0];
     
+    // Tarih değiştiğinde planlamayı sıfırla (veya isterseniz localstorage'da tutulabilir ama şimdilik sıfırlıyoruz)
+    useEffect(() => {
+        setPlacements({});
+    }, [selectedDate]);
+
     const getDaysInMonth = (year: number, month: number) => {
         return new Date(year, month + 1, 0).getDate();
     };
@@ -82,8 +92,35 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
             .catch(() => alert("Kopyalama başarısız.\n\n" + text));
     };
 
+    const togglePlacement = (id: string, room: number) => {
+        setPlacements(prev => {
+            const newState = { ...prev };
+            // Eğer zaten o odadaysa çıkar, değilse o odaya koy
+            if (newState[id] === room) {
+                delete newState[id];
+            } else {
+                newState[id] = room;
+            }
+            return newState;
+        });
+    };
+
+    const removeFromPlacement = (id: string) => {
+        setPlacements(prev => {
+            const newState = { ...prev };
+            delete newState[id];
+            return newState;
+        });
+    };
+
     const calendarGrid = generateCalendarGrid();
     const dailySurgeries = surgeries.filter(s => s.date === selectedDate);
+
+    // Planlama Modu İçin Gruplama
+    const room1 = dailySurgeries.filter(s => placements[s.id!] === 1);
+    const room2 = dailySurgeries.filter(s => placements[s.id!] === 2);
+    const room3 = dailySurgeries.filter(s => placements[s.id!] === 3);
+    const unassigned = dailySurgeries.filter(s => !placements[s.id!]);
 
     return (
         <section className="pb-24">
@@ -175,6 +212,116 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                     ))
                 )}
             </div>
+
+            {/* Planlama Butonu */}
+            {dailySurgeries.length > 0 && (
+                <div className="mt-6">
+                    <button 
+                        onClick={() => setIsPlanning(true)}
+                        className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl text-sm font-bold shadow-md flex items-center justify-center gap-2 active:scale-95 transition"
+                    >
+                        <i className="fa-solid fa-table-columns"></i> Salon Planlaması Yap
+                    </button>
+                </div>
+            )}
+
+            {/* Planlama Modalı */}
+            {isPlanning && (
+                <div className="fixed inset-0 bg-slate-50 z-[60] flex flex-col overflow-hidden">
+                    {/* Modal Header */}
+                    <div className="px-4 py-3 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center shrink-0">
+                        <div>
+                            <h2 className="font-bold text-slate-800">Salon Planlama</h2>
+                            <p className="text-[10px] text-slate-500">{formatDateDisplay(selectedDate)}</p>
+                        </div>
+                        <button onClick={() => setIsPlanning(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition">
+                            <i className="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    {/* Salonlar Tablosu */}
+                    <div className="flex-1 overflow-y-auto p-2">
+                        <div className="grid grid-cols-3 gap-2 h-full min-h-[300px]">
+                            {/* Salon 1 */}
+                            <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px]">
+                                <div className="bg-blue-50 text-blue-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-blue-100">
+                                    Salon 1
+                                </div>
+                                <div className="p-1 space-y-1">
+                                    {room1.map((s, idx) => (
+                                        <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-blue-50 p-2 rounded-lg border border-blue-100 cursor-pointer active:scale-95 transition">
+                                            <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
+                                            <div className="text-[10px] font-bold text-slate-800 leading-tight">{s.patientName}</div>
+                                            <div className="text-[9px] text-blue-600 truncate">{s.operation}</div>
+                                        </div>
+                                    ))}
+                                    {room1.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
+                                </div>
+                            </div>
+
+                            {/* Salon 2 */}
+                            <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px]">
+                                <div className="bg-purple-50 text-purple-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-purple-100">
+                                    Salon 2
+                                </div>
+                                <div className="p-1 space-y-1">
+                                    {room2.map((s, idx) => (
+                                        <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-purple-50 p-2 rounded-lg border border-purple-100 cursor-pointer active:scale-95 transition">
+                                            <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
+                                            <div className="text-[10px] font-bold text-slate-800 leading-tight">{s.patientName}</div>
+                                            <div className="text-[9px] text-purple-600 truncate">{s.operation}</div>
+                                        </div>
+                                    ))}
+                                    {room2.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
+                                </div>
+                            </div>
+
+                            {/* Salon 3 */}
+                            <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px]">
+                                <div className="bg-emerald-50 text-emerald-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-emerald-100">
+                                    Salon 3
+                                </div>
+                                <div className="p-1 space-y-1">
+                                    {room3.map((s, idx) => (
+                                        <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-emerald-50 p-2 rounded-lg border border-emerald-100 cursor-pointer active:scale-95 transition">
+                                            <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
+                                            <div className="text-[10px] font-bold text-slate-800 leading-tight">{s.patientName}</div>
+                                            <div className="text-[9px] text-emerald-600 truncate">{s.operation}</div>
+                                        </div>
+                                    ))}
+                                    {room3.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bekleyenler Listesi */}
+                    <div className="bg-slate-100 p-3 shrink-0 max-h-[40vh] overflow-y-auto border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Bekleyen Hastalar ({unassigned.length})</h3>
+                        <div className="space-y-2">
+                            {unassigned.map(s => (
+                                <div key={s.id} className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <div className="text-xs font-bold text-slate-800 truncate">{s.patientName}</div>
+                                        <div className="text-[10px] text-slate-500 truncate">{s.operation}</div>
+                                        <div className="text-[10px] text-slate-400">{s.professor}</div>
+                                    </div>
+                                    <div className="flex gap-1 shrink-0">
+                                        <button onClick={() => togglePlacement(s.id!, 1)} className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 font-bold text-xs hover:bg-blue-100 transition shadow-sm">S1</button>
+                                        <button onClick={() => togglePlacement(s.id!, 2)} className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 font-bold text-xs hover:bg-purple-100 transition shadow-sm">S2</button>
+                                        <button onClick={() => togglePlacement(s.id!, 3)} className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 font-bold text-xs hover:bg-emerald-100 transition shadow-sm">S3</button>
+                                    </div>
+                                </div>
+                            ))}
+                            {unassigned.length === 0 && dailySurgeries.length > 0 && (
+                                <div className="text-center text-xs text-green-600 font-medium py-2">
+                                    <i className="fa-solid fa-check-circle mr-1"></i> Tüm hastalar yerleştirildi!
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 };
