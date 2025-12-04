@@ -18,7 +18,7 @@ const AddSurgeryForm: React.FC<AddSurgeryFormProps> = ({ initialDate, editData, 
         professor: '',
         resident: '',
         phone: '',
-        urine: 'Steril',
+        urine: 'Bilinmiyor', // Varsayılan değer 'Bilinmiyor' olarak değiştirildi
         anesthesia: '',
         note: '',
         isSecondRoom: false,

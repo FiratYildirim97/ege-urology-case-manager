@@ -46,8 +46,15 @@ const SurgeryCard: React.FC<SurgeryCardProps> = ({ surgery, showDate, onEdit, on
             </div>
 
             <div className="flex items-center gap-2 mt-2">
-                <div className="flex-1 flex items-center gap-1 text-[11px] font-semibold bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg border">
-                    <i className="fa-solid fa-user-doctor text-slate-400"></i> {surgery.professor}
+                <div className="flex-1 flex items-center justify-between gap-2 text-[11px] bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                    <div className="flex items-center gap-1 font-semibold text-slate-700">
+                        <i className="fa-solid fa-user-doctor text-slate-400"></i> {surgery.professor}
+                    </div>
+                    {surgery.resident && (
+                        <div className="text-slate-900 font-normal">
+                            {surgery.resident}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -100,10 +107,6 @@ const SurgeryCard: React.FC<SurgeryCardProps> = ({ surgery, showDate, onEdit, on
                     <span>{surgery.note}</span>
                 </div>
             )}
-
-            <div className="text-[10px] text-slate-400 italic text-right mt-1">
-                Plan: {surgery.resident}
-            </div>
         </div>
     );
 };
