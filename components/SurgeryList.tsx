@@ -189,8 +189,8 @@ const SurgeryList: React.FC<SurgeryListProps> = ({ surgeries, onEdit, onDelete }
     };
 
     return (
-        <section className="pb-24">
-             <div className="bg-white p-2 rounded-xl shadow-sm mb-4 border border-slate-100 flex items-center sticky top-0 z-10">
+        <section className="pb-24 md:pb-8">
+             <div className="bg-white p-2 rounded-xl shadow-sm mb-4 border border-slate-100 flex items-center sticky top-0 md:top-4 z-10">
                 <i className="fa-solid fa-search text-slate-400 ml-3"></i>
                 <input 
                     type="text" 
@@ -201,7 +201,7 @@ const SurgeryList: React.FC<SurgeryListProps> = ({ surgeries, onEdit, onDelete }
                 />
             </div>
 
-            <div className="mb-3 flex gap-2">
+            <div className="mb-3 flex flex-col sm:flex-row gap-2">
                 <button onClick={() => setShowExcelModal(true)} className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl shadow flex items-center justify-center gap-2 text-xs font-bold transition">
                     <i className="fa-solid fa-file-excel text-lg"></i> Excel Dosyası Yükle
                 </button>
@@ -237,7 +237,7 @@ const SurgeryList: React.FC<SurgeryListProps> = ({ surgeries, onEdit, onDelete }
                 </select>
             </div>
 
-            <div className="bg-white p-3 rounded-xl shadow-sm mb-3 border border-slate-100 grid grid-cols-2 gap-3 text-xs">
+            <div className="bg-white p-3 rounded-xl shadow-sm mb-3 border border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div><div className="text-slate-400 uppercase text-[10px] font-semibold">Toplam Vaka</div><div className="text-base font-bold text-slate-800">{stats.total}</div></div>
                 <div><div className="text-slate-400 uppercase text-[10px] font-semibold">2. Salon</div><div className="text-base font-bold text-slate-800">{stats.second}</div></div>
                 <div><div className="text-slate-400 uppercase text-[10px] font-semibold">Kalan</div><div className="text-base font-bold text-slate-800">{stats.remaining}</div></div>
@@ -249,20 +249,26 @@ const SurgeryList: React.FC<SurgeryListProps> = ({ surgeries, onEdit, onDelete }
                 <button onClick={() => exportToCSV(filteredSurgeries, 'filtreli_liste.csv')} className="flex-1 px-3 py-2 text-[11px] font-semibold rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:scale-95 transition">Filtreli CSV İndir</button>
             </div>
 
-            <div className="space-y-3">
+            {/* MASAÜSTÜ İÇİN IZGARA YAPISI (md:grid-cols-2 lg:grid-cols-3) */}
+            <div className="md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 space-y-3 md:space-y-0">
                 {filteredSurgeries.length === 0 ? (
-                    <div className="text-center text-xs text-slate-400 py-4">Kayıt bulunamadı.</div>
+                    <div className="col-span-full text-center text-xs text-slate-400 py-4">Kayıt bulunamadı.</div>
                 ) : (
                     filteredSurgeries.map(s => (
-                        <SurgeryCard key={s.id} surgery={s} showDate onEdit={onEdit} onDelete={onDelete} />
+                        <div key={s.id}>
+                            <SurgeryCard surgery={s} showDate onEdit={onEdit} onDelete={onDelete} />
+                        </div>
                     ))
                 )}
             </div>
 
             {/* Excel Modal */}
             {showExcelModal && (
-                <div className="fixed top-0 left-0 width-full height-full w-full h-full bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                <div className="fixed top-0 left-0 width-full height-full w-full h-full bg-black/50 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
+                         <button onClick={() => setShowExcelModal(false)} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600">
+                            <i className="fa-solid fa-xmark text-lg"></i>
+                        </button>
                         <h2 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i className="fa-solid fa-file-import text-emerald-600"></i> Excel İçe Aktar</h2>
                         <p className="text-xs text-slate-500 mb-4">Excel dosyanızı seçin ve <b>Pazartesi</b> gününü belirleyin.</p>
                         <div className="space-y-3">

@@ -135,8 +135,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
     const unassigned = dailySurgeries.filter(s => !placements[s.id!]);
 
     return (
-        <section className="pb-24">
-            <div className="bg-white rounded-2xl shadow-sm p-4 mb-6 border border-slate-100">
+        <section className="pb-24 md:pb-8 flex flex-col md:flex-row md:gap-6 md:items-start">
+            {/* SOL KOLON: Takvim */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 mb-6 border border-slate-100 md:w-96 md:shrink-0 md:sticky md:top-4">
                 <div className="flex justify-between items-center mb-4">
                     <button onClick={handlePrevMonth} className="p-2 text-slate-400 hover:text-blue-600">
                         <i className="fa-solid fa-chevron-left"></i>
@@ -192,144 +193,149 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                 </div>
             </div>
 
-            <div className="flex justify-between items-end mb-4 px-1">
-                <div>
-                    <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider">Seçili Tarih</h3>
-                    <p className="text-xl font-bold text-slate-800">{formatDateDisplay(selectedDate)}</p>
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={copyToWhatsapp} className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-2 rounded-full shadow-md transition flex items-center gap-1 active:scale-95">
-                        <i className="fa-brands fa-whatsapp text-lg"></i> Listeyi Kopyala
-                    </button>
-                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-2 rounded-lg font-bold flex items-center gap-1">
-                        <i className="fa-solid fa-list-check"></i> {dailySurgeries.length}
-                    </span>
-                </div>
-            </div>
-
-            <div className="space-y-3">
-                {dailySurgeries.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 text-sm">
-                        <i className="fa-regular fa-folder-open mb-2 text-4xl opacity-30"></i>
-                        <p>Bu tarihte kayıtlı vaka yok.</p>
+            {/* SAĞ KOLON: Günlük Liste */}
+            <div className="flex-1 w-full">
+                <div className="flex justify-between items-end mb-4 px-1">
+                    <div>
+                        <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider">Seçili Tarih</h3>
+                        <p className="text-xl font-bold text-slate-800">{formatDateDisplay(selectedDate)}</p>
                     </div>
-                ) : (
-                    dailySurgeries.map(surgery => (
-                        <SurgeryCard 
-                            key={surgery.id} 
-                            surgery={surgery} 
-                            onEdit={onEdit} 
-                            onDelete={onDelete} 
-                        />
-                    ))
+                    <div className="flex gap-2">
+                        <button onClick={copyToWhatsapp} className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-2 rounded-full shadow-md transition flex items-center gap-1 active:scale-95">
+                            <i className="fa-brands fa-whatsapp text-lg"></i> <span className="hidden sm:inline">Listeyi Kopyala</span>
+                        </button>
+                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-2 rounded-lg font-bold flex items-center gap-1">
+                            <i className="fa-solid fa-list-check"></i> {dailySurgeries.length}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    {dailySurgeries.length === 0 ? (
+                        <div className="text-center py-10 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
+                            <i className="fa-regular fa-folder-open mb-2 text-4xl opacity-30"></i>
+                            <p>Bu tarihte kayıtlı vaka yok.</p>
+                        </div>
+                    ) : (
+                        dailySurgeries.map(surgery => (
+                            <SurgeryCard 
+                                key={surgery.id} 
+                                surgery={surgery} 
+                                onEdit={onEdit} 
+                                onDelete={onDelete} 
+                            />
+                        ))
+                    )}
+                </div>
+
+                {/* Planlama Butonu */}
+                {dailySurgeries.length > 0 && (
+                    <div className="mt-6">
+                        <button 
+                            onClick={() => setIsPlanning(true)}
+                            className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl text-sm font-bold shadow-md flex items-center justify-center gap-2 active:scale-95 transition"
+                        >
+                            <i className="fa-solid fa-table-columns"></i> Salon Planlaması Yap
+                        </button>
+                    </div>
                 )}
             </div>
 
-            {/* Planlama Butonu */}
-            {dailySurgeries.length > 0 && (
-                <div className="mt-6">
-                    <button 
-                        onClick={() => setIsPlanning(true)}
-                        className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl text-sm font-bold shadow-md flex items-center justify-center gap-2 active:scale-95 transition"
-                    >
-                        <i className="fa-solid fa-table-columns"></i> Salon Planlaması Yap
-                    </button>
-                </div>
-            )}
-
             {/* Planlama Modalı */}
             {isPlanning && (
-                <div className="fixed inset-0 bg-slate-50 z-[60] flex flex-col overflow-hidden">
-                    {/* Modal Header */}
-                    <div className="px-4 py-3 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center shrink-0">
-                        <div>
-                            <h2 className="font-bold text-slate-800">Salon Planlama</h2>
-                            <p className="text-[10px] text-slate-500">{formatDateDisplay(selectedDate)}</p>
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-slate-50 w-full h-full md:h-auto md:max-h-[90vh] md:max-w-5xl md:rounded-2xl flex flex-col overflow-hidden shadow-2xl relative">
+                        {/* Modal Header */}
+                        <div className="px-4 py-3 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center shrink-0">
+                            <div>
+                                <h2 className="font-bold text-slate-800">Salon Planlama</h2>
+                                <p className="text-[10px] text-slate-500">{formatDateDisplay(selectedDate)}</p>
+                            </div>
+                            <button onClick={() => setIsPlanning(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition">
+                                <i className="fa-solid fa-xmark"></i>
+                            </button>
                         </div>
-                        <button onClick={() => setIsPlanning(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition">
-                            <i className="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
 
-                    {/* Salonlar Tablosu */}
-                    <div className="flex-1 overflow-y-auto p-2">
-                        <div className="grid grid-cols-3 gap-2 h-full min-h-[300px]">
-                            {/* Salon 1 */}
-                            <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px]">
-                                <div className="bg-blue-50 text-blue-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-blue-100">
-                                    Salon 1
-                                </div>
-                                <div className="p-1 space-y-1">
-                                    {room1.map((s, idx) => (
-                                        <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-blue-50 p-2 rounded-lg border border-blue-100 cursor-pointer active:scale-95 transition">
-                                            <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
-                                            <div className="text-[10px] font-bold text-slate-800 leading-tight">{s.patientName}</div>
-                                            <div className="text-[9px] text-blue-600 truncate">{s.operation}</div>
-                                        </div>
-                                    ))}
-                                    {room1.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
-                                </div>
-                            </div>
-
-                            {/* Salon 2 */}
-                            <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px]">
-                                <div className="bg-purple-50 text-purple-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-purple-100">
-                                    Salon 2
-                                </div>
-                                <div className="p-1 space-y-1">
-                                    {room2.map((s, idx) => (
-                                        <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-purple-50 p-2 rounded-lg border border-purple-100 cursor-pointer active:scale-95 transition">
-                                            <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
-                                            <div className="text-[10px] font-bold text-slate-800 leading-tight">{s.patientName}</div>
-                                            <div className="text-[9px] text-purple-600 truncate">{s.operation}</div>
-                                        </div>
-                                    ))}
-                                    {room2.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
-                                </div>
-                            </div>
-
-                            {/* Salon 3 */}
-                            <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px]">
-                                <div className="bg-emerald-50 text-emerald-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-emerald-100">
-                                    Salon 3
-                                </div>
-                                <div className="p-1 space-y-1">
-                                    {room3.map((s, idx) => (
-                                        <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-emerald-50 p-2 rounded-lg border border-emerald-100 cursor-pointer active:scale-95 transition">
-                                            <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
-                                            <div className="text-[10px] font-bold text-slate-800 leading-tight">{s.patientName}</div>
-                                            <div className="text-[9px] text-emerald-600 truncate">{s.operation}</div>
-                                        </div>
-                                    ))}
-                                    {room3.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Bekleyenler Listesi */}
-                    <div className="bg-slate-100 p-3 shrink-0 max-h-[40vh] overflow-y-auto border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Bekleyen Hastalar ({unassigned.length})</h3>
-                        <div className="space-y-2">
-                            {unassigned.map(s => (
-                                <div key={s.id} className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between gap-2">
-                                    <div className="min-w-0">
-                                        <div className="text-xs font-bold text-slate-800 truncate">{s.patientName}</div>
-                                        <div className="text-[10px] text-slate-500 truncate">{s.operation}</div>
-                                        <div className="text-[10px] text-slate-400">{s.professor}</div>
+                        {/* Salonlar Tablosu */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                            <div className="grid grid-cols-3 gap-3 md:gap-6 h-full min-h-[300px]">
+                                {/* Salon 1 */}
+                                <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px] shadow-sm">
+                                    <div className="bg-blue-50 text-blue-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-blue-100">
+                                        Salon 1
                                     </div>
-                                    <div className="flex gap-1 shrink-0">
-                                        <button onClick={() => togglePlacement(s.id!, 1)} className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 font-bold text-xs hover:bg-blue-100 transition shadow-sm">S1</button>
-                                        <button onClick={() => togglePlacement(s.id!, 2)} className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 font-bold text-xs hover:bg-purple-100 transition shadow-sm">S2</button>
-                                        <button onClick={() => togglePlacement(s.id!, 3)} className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 font-bold text-xs hover:bg-emerald-100 transition shadow-sm">S3</button>
+                                    <div className="p-2 space-y-2">
+                                        {room1.map((s, idx) => (
+                                            <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-blue-50 p-3 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition">
+                                                <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
+                                                <div className="text-xs font-bold text-slate-800 leading-tight">{s.patientName}</div>
+                                                <div className="text-[10px] text-blue-600 truncate mt-1">{s.operation}</div>
+                                            </div>
+                                        ))}
+                                        {room1.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
                                     </div>
                                 </div>
-                            ))}
-                            {unassigned.length === 0 && dailySurgeries.length > 0 && (
-                                <div className="text-center text-xs text-green-600 font-medium py-2">
-                                    <i className="fa-solid fa-check-circle mr-1"></i> Tüm hastalar yerleştirildi!
+
+                                {/* Salon 2 */}
+                                <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px] shadow-sm">
+                                    <div className="bg-purple-50 text-purple-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-purple-100">
+                                        Salon 2
+                                    </div>
+                                    <div className="p-2 space-y-2">
+                                        {room2.map((s, idx) => (
+                                            <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-purple-50 p-3 rounded-lg border border-purple-100 cursor-pointer hover:bg-purple-100 transition">
+                                                <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
+                                                <div className="text-xs font-bold text-slate-800 leading-tight">{s.patientName}</div>
+                                                <div className="text-[10px] text-purple-600 truncate mt-1">{s.operation}</div>
+                                            </div>
+                                        ))}
+                                        {room2.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
+                                    </div>
                                 </div>
-                            )}
+
+                                {/* Salon 3 */}
+                                <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px] shadow-sm">
+                                    <div className="bg-emerald-50 text-emerald-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-emerald-100">
+                                        Salon 3
+                                    </div>
+                                    <div className="p-2 space-y-2">
+                                        {room3.map((s, idx) => (
+                                            <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 cursor-pointer hover:bg-emerald-100 transition">
+                                                <div className="text-[9px] font-bold text-slate-400 mb-0.5">{idx + 1}. Vaka</div>
+                                                <div className="text-xs font-bold text-slate-800 leading-tight">{s.patientName}</div>
+                                                <div className="text-[10px] text-emerald-600 truncate mt-1">{s.operation}</div>
+                                            </div>
+                                        ))}
+                                        {room3.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Bekleyenler Listesi */}
+                        <div className="bg-slate-100 p-4 shrink-0 max-h-[40vh] overflow-y-auto border-t border-slate-200">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Bekleyen Hastalar ({unassigned.length})</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {unassigned.map(s => (
+                                    <div key={s.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <div className="text-xs font-bold text-slate-800 truncate">{s.patientName}</div>
+                                            <div className="text-[10px] text-slate-500 truncate">{s.operation}</div>
+                                            <div className="text-[10px] text-slate-400">{s.professor}</div>
+                                        </div>
+                                        <div className="flex gap-1 shrink-0">
+                                            <button onClick={() => togglePlacement(s.id!, 1)} className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 font-bold text-xs hover:bg-blue-100 transition shadow-sm">S1</button>
+                                            <button onClick={() => togglePlacement(s.id!, 2)} className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 font-bold text-xs hover:bg-purple-100 transition shadow-sm">S2</button>
+                                            <button onClick={() => togglePlacement(s.id!, 3)} className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 font-bold text-xs hover:bg-emerald-100 transition shadow-sm">S3</button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {unassigned.length === 0 && dailySurgeries.length > 0 && (
+                                    <div className="col-span-full text-center text-sm text-green-600 font-medium py-2">
+                                        <i className="fa-solid fa-check-circle mr-1"></i> Tüm hastalar yerleştirildi!
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
