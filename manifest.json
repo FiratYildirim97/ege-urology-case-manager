@@ -1,0 +1,23 @@
+{
+  "name": "Ege Üroloji Asistan Yönetimi",
+  "short_name": "Ege Üroloji",
+  "description": "Ameliyat listesi takibi ve asistan planlaması uygulaması.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
