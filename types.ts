@@ -19,6 +19,12 @@ export interface Surgery {
     updatedAt?: any;
 }
 
+export interface ProfessorDay {
+    id?: string;
+    date: string; // ISO string YYYY-MM-DD
+    professorName: string;
+}
+
 export type TabType = 'calendar' | 'add' | 'list';
 
 export interface FilterState {

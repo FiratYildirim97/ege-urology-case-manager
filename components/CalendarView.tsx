@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Surgery } from '../types';
+import { Surgery, ProfessorDay } from '../types';
 import { formatDateDisplay } from '../services/utils';
 import SurgeryCard from './SurgeryCard';
+import { subscribeToProfessorDays, setProfessorDay } from '../services/firebase';
 
 interface CalendarViewProps {
     surgeries: Surgery[];
@@ -12,16 +13,12 @@ interface CalendarViewProps {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, onDateSelect, onEdit, onDelete }) => {
-    // Determine the month to display based on selectedDate or current Date if selected is far off? 
-    // Actually, usually users want to navigate months independently of selection, but syncing them is simpler.
-    // Let's keep a local state for the displayed month.
     const [displayDate, setDisplayDate] = useState(new Date(selectedDate));
-    
-    // Salon Planlama State'leri
     const [isPlanning, setIsPlanning] = useState(false);
-    
-    // ID -> Salon Numarası (1, 2, 3) eşleşmesi
-    // BAŞLANGIÇTA LOCALSTORAGE'DAN OKU
+    const [professorDays, setProfessorDays] = useState<ProfessorDay[]>([]);
+    const [isEditingProf, setIsEditingProf] = useState(false);
+    const [profInputValue, setProfInputValue] = useState("");
+
     const [placements, setPlacements] = useState<Record<string, number>>(() => {
         try {
             const saved = localStorage.getItem('surgery_placements');
@@ -33,20 +30,28 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
 
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // VERİ DEĞİŞTİĞİNDE LOCALSTORAGE'A KAYDET
-    // Not: useEffect ile tarih değişince sıfırlama işlemini kaldırdık.
-    const saveToStorage = (data: Record<string, number>) => {
-        localStorage.setItem('surgery_placements', JSON.stringify(data));
-    };
+    useEffect(() => {
+        localStorage.setItem('surgery_placements', JSON.stringify(placements));
+    }, [placements]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeToProfessorDays((data) => {
+            setProfessorDays(data);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Sync input value with selected date's professor
+    useEffect(() => {
+        const currentProf = professorDays.find(pd => pd.date === selectedDate);
+        setProfInputValue(currentProf ? currentProf.professorName : "");
+    }, [selectedDate, professorDays]);
 
     const getDaysInMonth = (year: number, month: number) => {
         return new Date(year, month + 1, 0).getDate();
     };
 
     const getFirstDayOfMonth = (year: number, month: number) => {
-        // 0 = Sunday, 1 = Monday. We want Monday as 0 index for the grid.
-        // JS getDay(): 0=Sun, 1=Mon...6=Sat
-        // Target: Mon=0, Tue=1... Sun=6
         const day = new Date(year, month, 1).getDay();
         return (day + 6) % 7;
     };
@@ -56,16 +61,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
         const month = displayDate.getMonth();
         const daysInMonth = getDaysInMonth(year, month);
         const startDay = getFirstDayOfMonth(year, month);
-
         const days = [];
-        // Empty slots
-        for (let i = 0; i < startDay; i++) {
-            days.push(null);
-        }
-        // Days
-        for (let i = 1; i <= daysInMonth; i++) {
-            days.push(i);
-        }
+        for (let i = 0; i < startDay; i++) days.push(null);
+        for (let i = 1; i <= daysInMonth; i++) days.push(i);
         return days;
     };
 
@@ -83,14 +81,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
         onDateSelect(now.toISOString().split('T')[0]);
     };
 
+    const handleSaveProfessor = async () => {
+        await setProfessorDay(selectedDate, profInputValue);
+        setIsEditingProf(false);
+    };
+
     const copyToWhatsapp = () => {
         const list = surgeries.filter(s => s.date === selectedDate);
         if (list.length === 0) {
             alert("Vaka yok.");
             return;
         }
+        const currentProf = professorDays.find(pd => pd.date === selectedDate);
         const d = formatDateDisplay(selectedDate);
-        let text = `📅 *${d} - EGE ÜROLOJİ*\n--------------------------------\n`;
+        let text = `📅 *${d} - EGE ÜROLOJİ*\n`;
+        if (currentProf) text += `👨‍⚕️ *GÜNÜN HOCASI: ${currentProf.professorName.toUpperCase()}*\n`;
+        text += `--------------------------------\n`;
         list.forEach((i, idx) => {
             const badges = `${i.isRemaining ? "🔴 " : ""}${i.isSecondRoom ? "[2. SALON] " : ""}${i.isMDP ? "[MDP] " : ""}${i.isKG ? "[KG] " : ""}`;
             text += `\n${idx + 1}. ${badges}${i.patientName} ${i.age ? `(${i.age})` : ""} ${i.protocol ? `(#${i.protocol})` : ""}\n   🔪 ${i.operation}\n   👨‍⚕️ ${i.professor}\n`;
@@ -105,13 +111,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
     const togglePlacement = (id: string, room: number) => {
         setPlacements(prev => {
             const newState = { ...prev };
-            // Eğer zaten o odadaysa çıkar, değilse o odaya koy
-            if (newState[id] === room) {
-                delete newState[id];
-            } else {
-                newState[id] = room;
-            }
-            saveToStorage(newState);
+            if (newState[id] === room) delete newState[id];
+            else newState[id] = room;
             return newState;
         });
     };
@@ -120,15 +121,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
         setPlacements(prev => {
             const newState = { ...prev };
             delete newState[id];
-            saveToStorage(newState);
             return newState;
         });
     };
 
     const calendarGrid = generateCalendarGrid();
     const dailySurgeries = surgeries.filter(s => s.date === selectedDate);
-
-    // Planlama Modu İçin Gruplama
     const room1 = dailySurgeries.filter(s => placements[s.id!] === 1);
     const room2 = dailySurgeries.filter(s => placements[s.id!] === 2);
     const room3 = dailySurgeries.filter(s => placements[s.id!] === 3);
@@ -139,13 +137,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
             {/* SOL KOLON: Takvim */}
             <div className="bg-white rounded-2xl shadow-sm p-4 mb-6 border border-slate-100 md:w-96 md:shrink-0 md:sticky md:top-4">
                 <div className="flex justify-between items-center mb-4">
-                    <button onClick={handlePrevMonth} className="p-2 text-slate-400 hover:text-blue-600">
+                    <button onClick={handlePrevMonth} className="p-2 text-slate-400 hover:text-blue-600 transition">
                         <i className="fa-solid fa-chevron-left"></i>
                     </button>
                     <h2 className="font-bold text-lg text-slate-700 capitalize">
                         {displayDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
                     </h2>
-                    <button onClick={handleNextMonth} className="p-2 text-slate-400 hover:text-blue-600">
+                    <button onClick={handleNextMonth} className="p-2 text-slate-400 hover:text-blue-600 transition">
                         <i className="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
@@ -165,6 +163,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                         const isToday = dateStr === todayStr;
                         const isSelected = dateStr === selectedDate;
                         const daySurgeries = surgeries.filter(s => s.date === dateStr);
+                        const dayProf = professorDays.find(pd => pd.date === dateStr);
                         const count = daySurgeries.length;
                         
                         let dotColorClass = '';
@@ -175,18 +174,23 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                         }
 
                         return (
-                            <div key={day} className="flex flex-col items-center">
+                            <div key={day} className="flex flex-col items-center relative py-1">
                                 <button 
                                     onClick={() => onDateSelect(dateStr)}
                                     className={`
-                                        w-10 h-10 rounded-full flex items-center justify-center font-medium text-xs transition
+                                        w-10 h-10 rounded-full flex flex-col items-center justify-center font-medium text-xs transition relative
                                         ${isToday ? 'border-[1.5px] border-blue-500 font-bold text-blue-600' : 'text-slate-700 hover:bg-slate-100'}
                                         ${isSelected ? '!bg-blue-600 !text-white !font-bold' : ''}
                                     `}
                                 >
-                                    {day}
+                                    <span>{day}</span>
+                                    {dayProf && (
+                                        <span className={`text-[7px] leading-[1] absolute bottom-1.5 font-bold uppercase ${isSelected ? 'text-white/80' : 'text-blue-500'}`}>
+                                            {dayProf.professorName.split(' ').map(n => n[0]).join('.')}
+                                        </span>
+                                    )}
                                 </button>
-                                {count > 0 && <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${dotColorClass}`}></div>}
+                                {count > 0 && <div className={`w-1.2 h-1.2 rounded-full mt-0.5 ${dotColorClass} w-[5px] h-[5px]`}></div>}
                             </div>
                         );
                     })}
@@ -195,11 +199,40 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
 
             {/* SAĞ KOLON: Günlük Liste */}
             <div className="flex-1 w-full">
-                <div className="flex justify-between items-end mb-4 px-1">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-end mb-4 px-1 gap-3">
                     <div>
-                        <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider">Seçili Tarih</h3>
+                        <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider mb-0.5">Seçili Tarih</h3>
                         <p className="text-xl font-bold text-slate-800">{formatDateDisplay(selectedDate)}</p>
+                        
+                        {/* HOCA GÜNÜ DÜZENLEME */}
+                        <div className="mt-2 flex items-center gap-2">
+                             <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
+                                <i className="fa-solid fa-user-doctor text-blue-500 text-[10px]"></i>
+                                {isEditingProf ? (
+                                    <div className="flex items-center gap-1">
+                                        <input 
+                                            autoFocus
+                                            type="text" 
+                                            value={profInputValue} 
+                                            onChange={(e) => setProfInputValue(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveProfessor()}
+                                            className="bg-transparent border-none outline-none text-[11px] font-bold text-blue-700 w-24 p-0"
+                                            placeholder="Hoca ismi..."
+                                        />
+                                        <button onClick={handleSaveProfessor} className="text-green-600"><i className="fa-solid fa-check"></i></button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsEditingProf(true)}>
+                                        <span className="text-[11px] font-bold text-blue-700">
+                                            {profInputValue || "Hoca Ata..."}
+                                        </span>
+                                        <i className="fa-solid fa-pen text-[9px] text-blue-300"></i>
+                                    </div>
+                                )}
+                             </div>
+                        </div>
                     </div>
+                    
                     <div className="flex gap-2">
                         <button onClick={copyToWhatsapp} className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-2 rounded-full shadow-md transition flex items-center gap-1 active:scale-95">
                             <i className="fa-brands fa-whatsapp text-lg"></i> <span className="hidden sm:inline">Listeyi Kopyala</span>
@@ -228,7 +261,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                     )}
                 </div>
 
-                {/* Planlama Butonu */}
                 {dailySurgeries.length > 0 && (
                     <div className="mt-6">
                         <button 
@@ -241,11 +273,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                 )}
             </div>
 
-            {/* Planlama Modalı */}
             {isPlanning && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                     <div className="bg-slate-50 w-full h-full md:h-auto md:max-h-[90vh] md:max-w-5xl md:rounded-2xl flex flex-col overflow-hidden shadow-2xl relative">
-                        {/* Modal Header */}
                         <div className="px-4 py-3 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center shrink-0">
                             <div>
                                 <h2 className="font-bold text-slate-800">Salon Planlama</h2>
@@ -256,14 +286,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                             </button>
                         </div>
 
-                        {/* Salonlar Tablosu */}
                         <div className="flex-1 overflow-y-auto p-4 md:p-6">
                             <div className="grid grid-cols-3 gap-3 md:gap-6 h-full min-h-[300px]">
-                                {/* Salon 1 */}
                                 <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px] shadow-sm">
-                                    <div className="bg-blue-50 text-blue-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-blue-100">
-                                        Salon 1
-                                    </div>
+                                    <div className="bg-blue-50 text-blue-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-blue-100">Salon 1</div>
                                     <div className="p-2 space-y-2">
                                         {room1.map((s, idx) => (
                                             <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-blue-50 p-3 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition">
@@ -275,12 +301,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                                         {room1.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
                                     </div>
                                 </div>
-
-                                {/* Salon 2 */}
                                 <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px] shadow-sm">
-                                    <div className="bg-purple-50 text-purple-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-purple-100">
-                                        Salon 2
-                                    </div>
+                                    <div className="bg-purple-50 text-purple-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-purple-100">Salon 2</div>
                                     <div className="p-2 space-y-2">
                                         {room2.map((s, idx) => (
                                             <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-purple-50 p-3 rounded-lg border border-purple-100 cursor-pointer hover:bg-purple-100 transition">
@@ -292,12 +314,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                                         {room2.length === 0 && <div className="text-[10px] text-slate-300 text-center py-4">Boş</div>}
                                     </div>
                                 </div>
-
-                                {/* Salon 3 */}
                                 <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-fit min-h-[150px] shadow-sm">
-                                    <div className="bg-emerald-50 text-emerald-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-emerald-100">
-                                        Salon 3
-                                    </div>
+                                    <div className="bg-emerald-50 text-emerald-700 text-xs font-bold text-center py-2 rounded-t-xl border-b border-emerald-100">Salon 3</div>
                                     <div className="p-2 space-y-2">
                                         {room3.map((s, idx) => (
                                             <div key={s.id} onClick={() => removeFromPlacement(s.id!)} className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 cursor-pointer hover:bg-emerald-100 transition">
@@ -312,7 +330,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                             </div>
                         </div>
 
-                        {/* Bekleyenler Listesi */}
                         <div className="bg-slate-100 p-4 shrink-0 max-h-[40vh] overflow-y-auto border-t border-slate-200">
                             <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Bekleyen Hastalar ({unassigned.length})</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">

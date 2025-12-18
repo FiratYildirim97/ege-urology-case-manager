@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, Timestamp, enableIndexedDbPersistence } from "firebase/firestore";
-import { Surgery } from "../types";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, Timestamp, enableIndexedDbPersistence, setDoc } from "firebase/firestore";
+import { Surgery, ProfessorDay } from "../types";
 
 const firebaseConfig = {
     apiKey: "AIzaSyA5EAs64RaRLZKdaRuZaxG_Gjo8g_ie2aY",
@@ -14,15 +14,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Enable Offline Persistence to save data usage
-// This allows the app to load from local cache first, reducing Firestore reads significantly.
 try {
     enableIndexedDbPersistence(db).catch((err) => {
         if (err.code == 'failed-precondition') {
-            // Multiple tabs open, persistence can only be enabled in one tab at a a time.
             console.log('Persistence failed: Multiple tabs open');
         } else if (err.code == 'unimplemented') {
-            // The current browser does not support all of the features required to enable persistence
             console.log('Persistence failed: Browser not supported');
         }
     });
@@ -31,11 +27,9 @@ try {
 }
 
 const surgeryCollection = collection(db, "surgeries");
+const professorDaysCollection = collection(db, "professorDays");
 
 export const subscribeToSurgeries = (callback: (surgeries: Surgery[]) => void) => {
-    // Basic query
-    // Thanks to persistence, this won't re-download everything on every reload, 
-    // only the changes (deltas) will be downloaded.
     const q = query(surgeryCollection);
     return onSnapshot(q, (snapshot) => {
         const data: Surgery[] = [];
@@ -44,6 +38,31 @@ export const subscribeToSurgeries = (callback: (surgeries: Surgery[]) => void) =
         });
         callback(data);
     });
+};
+
+export const subscribeToProfessorDays = (callback: (profDays: ProfessorDay[]) => void) => {
+    const q = query(professorDaysCollection);
+    return onSnapshot(q, (snapshot) => {
+        const data: ProfessorDay[] = [];
+        snapshot.forEach((doc) => {
+            data.push({ id: doc.id, ...doc.data() } as ProfessorDay);
+        });
+        callback(data);
+    });
+};
+
+export const setProfessorDay = async (date: string, professorName: string) => {
+    // We use date as document ID to make it unique per day
+    const ref = doc(db, "professorDays", date);
+    if (!professorName.trim()) {
+        await deleteDoc(ref);
+    } else {
+        await setDoc(ref, {
+            date,
+            professorName: professorName.trim(),
+            updatedAt: Timestamp.now()
+        });
+    }
 };
 
 export const addSurgery = async (surgery: Surgery) => {
