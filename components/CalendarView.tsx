@@ -185,8 +185,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ surgeries, selectedDate, on
                                 >
                                     <span>{day}</span>
                                     {dayProf && (
-                                        <span className={`text-[7px] leading-[1] absolute bottom-1.5 font-bold uppercase ${isSelected ? 'text-white/80' : 'text-blue-500'}`}>
-                                            {dayProf.professorName.split(' ').map(n => n[0]).join('.')}
+                                        <span className={`text-[7px] leading-[1] absolute bottom-1.5 w-[90%] text-center truncate font-bold uppercase ${isSelected ? 'text-white/80' : 'text-blue-500'}`}>
+                                            {dayProf.professorName}
                                         </span>
                                     )}
                                 </button>
