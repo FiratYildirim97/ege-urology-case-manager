@@ -7,6 +7,7 @@ import SurgeryList from './components/SurgeryList';
 import Login from './components/Login';
 
 const App: React.FC = () => {
+    const CURRENT_PASSWORD = 'egeuro';
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [surgeries, setSurgeries] = useState<Surgery[]>([]);
     const [currentTab, setCurrentTab] = useState<TabType>('calendar');
@@ -14,9 +15,12 @@ const App: React.FC = () => {
     const [editingSurgery, setEditingSurgery] = useState<Surgery | null>(null);
 
     useEffect(() => {
-        const authStatus = localStorage.getItem('ege_uro_auth');
-        if (authStatus === 'true') {
+        const storedPass = localStorage.getItem('ege_uro_pass');
+        if (storedPass === CURRENT_PASSWORD) {
             setIsAuthenticated(true);
+        } else {
+            setIsAuthenticated(false);
+            localStorage.removeItem('ege_uro_pass');
         }
     }, []);
 
@@ -30,15 +34,15 @@ const App: React.FC = () => {
     }, [isAuthenticated]);
 
     const handleLogin = (password: string) => {
-        if (password === 'egeuro2') {
+        if (password === CURRENT_PASSWORD) {
             setIsAuthenticated(true);
-            localStorage.setItem('ege_uro_auth', 'true');
+            localStorage.setItem('ege_uro_pass', password);
         }
     };
 
     const handleLogout = () => {
         setIsAuthenticated(false);
-        localStorage.removeItem('ege_uro_auth');
+        localStorage.removeItem('ege_uro_pass');
     };
 
     const handleEdit = (surgery: Surgery) => {
