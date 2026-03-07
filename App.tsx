@@ -30,7 +30,7 @@ const App: React.FC = () => {
     }, [isAuthenticated]);
 
     const handleLogin = (password: string) => {
-        if (password === 'egeuro') {
+        if (password === 'egeuro2') {
             setIsAuthenticated(true);
             localStorage.setItem('ege_uro_auth', 'true');
         }
