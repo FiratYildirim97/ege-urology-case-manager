@@ -4,19 +4,42 @@ import { subscribeToSurgeries, deleteSurgery } from './services/firebase';
 import CalendarView from './components/CalendarView';
 import AddSurgeryForm from './components/AddSurgeryForm';
 import SurgeryList from './components/SurgeryList';
+import Login from './components/Login';
 
 const App: React.FC = () => {
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [surgeries, setSurgeries] = useState<Surgery[]>([]);
     const [currentTab, setCurrentTab] = useState<TabType>('calendar');
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [editingSurgery, setEditingSurgery] = useState<Surgery | null>(null);
 
     useEffect(() => {
+        const authStatus = localStorage.getItem('ege_uro_auth');
+        if (authStatus === 'true') {
+            setIsAuthenticated(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        
         const unsubscribe = subscribeToSurgeries((data) => {
             setSurgeries(data);
         });
         return () => unsubscribe();
-    }, []);
+    }, [isAuthenticated]);
+
+    const handleLogin = (password: string) => {
+        if (password === 'egeuro') {
+            setIsAuthenticated(true);
+            localStorage.setItem('ege_uro_auth', 'true');
+        }
+    };
+
+    const handleLogout = () => {
+        setIsAuthenticated(false);
+        localStorage.removeItem('ege_uro_auth');
+    };
 
     const handleEdit = (surgery: Surgery) => {
         setEditingSurgery(surgery);
@@ -43,6 +66,10 @@ const App: React.FC = () => {
         }
         setCurrentTab(tab);
     };
+
+    if (!isAuthenticated) {
+        return <Login onLogin={handleLogin} />;
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 md:flex">
@@ -78,15 +105,18 @@ const App: React.FC = () => {
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-xl">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                             <i className="fa-solid fa-user-md"></i>
+                    <button 
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-2 bg-slate-50 hover:bg-red-50 hover:text-red-600 rounded-xl transition group"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-blue-100 group-hover:bg-red-100 flex items-center justify-center text-blue-600 group-hover:text-red-600 transition">
+                             <i className="fa-solid fa-right-from-bracket"></i>
                         </div>
-                        <div className="text-xs">
-                            <div className="font-bold text-slate-700">Aktif Kullanıcı</div>
-                            <div className="text-slate-400">Asistan</div>
+                        <div className="text-left">
+                            <div className="text-xs font-bold text-slate-700 group-hover:text-red-700">Çıkış Yap</div>
+                            <div className="text-[10px] text-slate-400">Oturumu Sonlandır</div>
                         </div>
-                    </div>
+                    </button>
                 </div>
             </aside>
 
@@ -97,9 +127,12 @@ const App: React.FC = () => {
                     <p className="text-[11px] text-slate-500 -mt-0.5">Ameliyat Listesi Asistanı</p>
                 </div>
                 <div className="flex items-center gap-2">
-                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 border border-blue-200">
-                        <i className="fa-solid fa-user-md"></i>
-                   </div>
+                   <button 
+                    onClick={handleLogout}
+                    className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 border border-blue-200 active:bg-red-100 active:text-red-600"
+                   >
+                        <i className="fa-solid fa-right-from-bracket"></i>
+                   </button>
                 </div>
             </header>
 
