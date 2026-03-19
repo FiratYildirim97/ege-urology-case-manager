@@ -10,7 +10,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Şifre kontrolü (Basit bir şifre: egeuro)
+        // Şifre kontrolü (Basit bir şifre: üroloji2026ege)
         if (password === 'üroloji2026ege') {
             onLogin(password);
         } else {

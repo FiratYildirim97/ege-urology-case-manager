@@ -7,7 +7,7 @@ import SurgeryList from './components/SurgeryList';
 import Login from './components/Login';
 
 const App: React.FC = () => {
-    const CURRENT_PASSWORD = 'egeuro';
+    const CURRENT_PASSWORD = 'üroloji2026ege';
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [surgeries, setSurgeries] = useState<Surgery[]>([]);
     const [currentTab, setCurrentTab] = useState<TabType>('calendar');
