@@ -11,7 +11,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // Şifre kontrolü (Basit bir şifre: egeuro)
-        if (password === 'egeuro') {
+        if (password === 'üroloji2026ege') {
             onLogin(password);
         } else {
             setError(true);
